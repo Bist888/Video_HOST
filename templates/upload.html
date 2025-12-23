@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка видео - Видеохостинг{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Загрузка видеоролика</h1>
+</div>
+
+<div class="upload-container">
+    <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="upload-form">
+        <div class="form-group">
+            <label for="title">Название видео *</label>
+            <input type="text" id="title" name="title" required placeholder="Введите название видео">
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Описание</label>
+            <textarea id="description" name="description" rows="5" placeholder="Опишите ваше видео (необязательно)"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="video">Видеофайл *</label>
+            <input type="file" id="video" name="video" accept="video/*" required>
+            <small>Разрешены форматы: MP4, AVI, MOV, WMV, FLV, WEBM, MKV. Максимальный размер: 500MB</small>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Загрузить видео</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

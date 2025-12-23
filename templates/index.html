@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Видеохостинг{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Видеоролики</h1>
+    {% if current_user.is_authenticated %}
+        <a href="{{ url_for('upload') }}" class="btn btn-primary">Загрузить видео</a>
+    {% endif %}
+</div>
+
+{% if videos %}
+    <div class="video-grid">
+        {% for video in videos %}
+            <div class="video-card">
+                <a href="{{ url_for('video_detail', video_id=video.id) }}">
+                    <div class="video-thumbnail">
+                        <video preload="metadata">
+                            {% set filename = video.filename.replace('\\', '/').split('/')[-1] %}
+                            {% set file_ext = filename.split('.')[-1].lower() %}
+                            {% if file_ext == 'mp4' %}
+                                <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/mp4">
+                            {% elif file_ext == 'mov' %}
+                                <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/quicktime">
+                            {% elif file_ext == 'avi' %}
+                                <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/x-msvideo">
+                            {% elif file_ext == 'webm' %}
+                                <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/webm">
+                            {% elif file_ext == 'mkv' %}
+                                <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/x-matroska">
+                            {% else %}
+                                <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/mp4">
+                            {% endif %}
+                        </video>
+                        <div class="play-overlay">▶</div>
+                        <div class="video-duration">00:00</div>
+                    </div>
+                    <div class="video-info">
+                        <h3>{{ video.title }}</h3>
+                        <p class="video-meta">
+                            <span>👤 {{ video.author.username }}</span>
+                            <span>👁 {{ video.views }} просмотров</span>
+                            <span>👍 {{ video.get_likes_count() }}</span>
+                            <span>📅 {{ video.created_at.strftime('%d.%m.%Y') }}</span>
+                        </p>
+                        {% if video.is_restricted %}
+                            <span class="badge badge-warning">Ограничено</span>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <p>Пока нет видеороликов. {% if current_user.is_authenticated %}<a href="{{ url_for('upload') }}">Загрузите первое видео!</a>{% else %}<a href="{{ url_for('auth.register') }}">Зарегистрируйтесь</a> и загрузите первое видео!{% endif %}</p>
+    </div>
+{% endif %}
+{% endblock %}
+

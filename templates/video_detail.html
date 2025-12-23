@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}{{ video.title }} - Видеохостинг{% endblock %}
+
+{% block content %}
+<div class="video-detail-container">
+    <div class="video-player-section">
+        <div class="video-wrapper">
+            <video controls id="main-video" preload="metadata" style="width: 100%; height: 100%;">
+                {% set filename = video.filename.replace('\\', '/').split('/')[-1] %}
+                {% set file_ext = filename.split('.')[-1].lower() %}
+                {% if file_ext == 'mp4' %}
+                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/mp4">
+                {% elif file_ext == 'mov' %}
+                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/quicktime">
+                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/mp4">
+                {% elif file_ext == 'avi' %}
+                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/x-msvideo">
+                {% elif file_ext == 'webm' %}
+                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/webm">
+                {% elif file_ext == 'mkv' %}
+                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/x-matroska">
+                {% else %}
+                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/mp4">
+                {% endif %}
+                Ваш браузер не поддерживает видео. <a href="{{ url_for('uploaded_file', filename=filename) }}">Скачать видео</a>
+            </video>
+        </div>
+        
+        <div class="video-header">
+            <h1>{{ video.title }}</h1>
+            <div class="video-stats">
+                <span>👁 {{ video.views }} просмотров</span>
+                <span>📅 {{ video.created_at.strftime('%d.%m.%Y в %H:%M') }}</span>
+                <span>👤 {{ video.author.username }}</span>
+            </div>
+        </div>
+        
+        {% if video.description %}
+            <div class="video-description">
+                <p>{{ video.description }}</p>
+            </div>
+        {% endif %}
+        
+        <div class="video-actions">
+            {% if current_user.is_authenticated %}
+                <button class="btn-like {% if user_like and user_like.is_like %}active{% endif %}" 
+                        data-video-id="{{ video.id }}" 
+                        onclick="likeVideo({{ video.id }})">
+                    👍 <span id="likes-count">{{ likes_count }}</span>
+                </button>
+                <button class="btn-dislike {% if user_like and not user_like.is_like %}active{% endif %}" 
+                        data-video-id="{{ video.id }}" 
+                        onclick="dislikeVideo({{ video.id }})">
+                    👎 <span id="dislikes-count">{{ dislikes_count }}</span>
+                </button>
+            {% else %}
+                <div class="auth-prompt">
+                    <a href="{{ url_for('auth.login') }}">Войдите</a>, чтобы ставить лайки
+                </div>
+            {% endif %}
+            
+            {% if current_user.is_authenticated and (current_user.id == video.user_id or current_user.is_admin()) %}
+                <form method="POST" action="{{ url_for('delete_video', video_id=video.id) }}" 
+                      onsubmit="return confirm('Вы уверены, что хотите удалить это видео?');" 
+                      style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Удалить видео</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="comments-section">
+        <h2>Комментарии ({{ comments|length }})</h2>
+        
+        {% if current_user.is_authenticated %}
+            <form method="POST" action="{{ url_for('add_comment', video_id=video.id) }}" class="comment-form">
+                <textarea name="text" placeholder="Напишите комментарий..." required rows="3"></textarea>
+                <button type="submit" class="btn btn-primary">Отправить</button>
+            </form>
+        {% else %}
+            <div class="auth-prompt">
+                <a href="{{ url_for('auth.login') }}">Войдите</a>, чтобы оставлять комментарии
+            </div>
+        {% endif %}
+        
+        <div class="comments-list">
+            {% if comments %}
+                {% for comment in comments %}
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <strong>{{ comment.author.username }}</strong>
+                            <span class="comment-date">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                        </div>
+                        <div class="comment-text">{{ comment.text }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-comments">Пока нет комментариев. Будьте первым!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function likeVideo(videoId) {
+    fetch(`/video/${videoId}/like`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('likes-count').textContent = data.likes;
+            document.getElementById('dislikes-count').textContent = data.dislikes;
+            
+            const likeBtn = document.querySelector('.btn-like');
+            const dislikeBtn = document.querySelector('.btn-dislike');
+            
+            if (data.action === 'liked') {
+                likeBtn.classList.add('active');
+                dislikeBtn.classList.remove('active');
+            } else if (data.action === 'removed') {
+                likeBtn.classList.remove('active');
+            }
+        }
+    });
+}
+
+function dislikeVideo(videoId) {
+    fetch(`/video/${videoId}/dislike`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('likes-count').textContent = data.likes;
+            document.getElementById('dislikes-count').textContent = data.dislikes;
+            
+            const likeBtn = document.querySelector('.btn-like');
+            const dislikeBtn = document.querySelector('.btn-dislike');
+            
+            if (data.action === 'disliked') {
+                dislikeBtn.classList.add('active');
+                likeBtn.classList.remove('active');
+            } else if (data.action === 'removed') {
+                dislikeBtn.classList.remove('active');
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
+
